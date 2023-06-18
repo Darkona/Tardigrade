@@ -8,28 +8,40 @@
       උ( ___ )づ
 
 ## What is it
-Tardigrade is a super lightweight python HTTP server that runs in the command line. 
-It's meant to be a dev tool to quickly spin up a useful small server.
+Tardigrade is a small python HTTP server that runs in the command line. It's meant to be a dev tool to quickly spin up a useful small server.
 
-
-Specially useful to load little files to Postman until some day in the far future when 
-**[7210](https://github.com/postmanlabs/postman-app-support/issues/7210)** is finally addressed. 
-
-It also serves as a small logging utility that can log requests via GET or POST methods.
+Devised principally to be an auxiliary application to Postman, until some day in the far future when **[7210](https://github.com/postmanlabs/postman-app-support/issues/7210)** is finally addressed. 
 
 Tardigrade can connect to another Tardigrade instance via web logging to log the other's events, or any application 
 using python's **[HHTPHandler](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.HTTPHandler)**
+
 ## Features
 
-### GET Requests
+### Server Mode
 
-GET requests serve files from the directory where Tardigrade is running. 
-Leverages **[SimpleHTTPRequestHandler](https://docs.python.org/3/library/http.server.html)** to accomplish this.
-It will return a file with best guess of content type. 
 
-If a request is for a directory instead, it will show either a present index.html file or a list of files in the directory.
+#### HTTP GET
 
-### POST Requests
+GET requests serve files from the directory where Tardigrade is running. It extends **[SimpleHTTPRequestHandler](https://docs.python.org/3/library/http.server.html)** to accomplish this.
 
-POST Requests have two uses. If the request is in JSON format, it wil expect a 
-### Simple usage
+If a request is for a directory instead, it will serve either a present "index.htm(l)" file or generate a page with a list of files in the directory. This is very useful to check file names and their relative path to where Tardigrade is running, if seen from a browser.
+
+#### HTTP POST
+
+Via POST, Tardigrade listens in 3 endpoints:
+
+##### /mock
+
+Very similar to the GET response, it will return the contents of either a present "response.json" file, or a different file if the filename is sent as part of the request path.
+
+##### /log
+
+Will simply log the request as it comes, one log record per request.
+
+##### /command
+
+Executes a command in the os terminal, and returns the output from the command. Useful for example to generate a some data or run a custom .bat or .sh via a command line utility to use in subsequent operations in Postman.
+
+
+
+

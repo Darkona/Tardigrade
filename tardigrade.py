@@ -1,18 +1,19 @@
+import argparse
 import ast
 import email.utils
+import html
+import io
 import logging
-import sys
-from logging.handlers import RotatingFileHandler
 import os
 import socketserver
 import subprocess
-import argparse
+import sys
 import urllib.parse
-from datetime import timezone
 from datetime import datetime
+from datetime import timezone
 from http import HTTPStatus
-
 from http.server import SimpleHTTPRequestHandler, HTTPServer
+from logging.handlers import RotatingFileHandler
 from typing import Any
 
 import simplejson
@@ -51,7 +52,7 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
         if _request:
             message = '\n------- REQUEST: ' + self.requestline
             if _header: message += "\nHEADER:\n" + str(self.headers)
-            if _body and body: message += "\nBODY: \n" + body
+            if _body and body: message += "BODY: \n" + body
             log.info(message)
 
     def log_error(self, f: str, *args: Any) -> None:
@@ -60,16 +61,17 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         self.log_request()
-        f = self.do_Common()
+        f = self.do_Common(default_filenames=("index.html", "index.htm"))
         if f:
             try:
                 if _response:
                     message = '\n------- RESPONSE -------'
-                    if _header: message += "\nHEADER:\n" + str(self.headers)
-                    if _body: message += "BODY: \n" + f[1]
+                    if _header: message += "\nHEADER:\n" + ''.join(item.decode() for item in self._headers_buffer)
+                    if _body: message += "\nBODY: \n" + f[1]
                     log.info(message)
                 self.end_headers()
                 self.copyfile(f[0], self.wfile)
+
             finally:
                 f[0].close()
 
@@ -81,47 +83,85 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
             if _response: log.info("\nRESPONSE HEADER:\n" + str(self.headers))
             f.close()
 
+    def do_LogServe(self, content_type):
+        if content_type != "application/x-www-form-urlencoded":
+            self.send_error(HTTPStatus.BAD_REQUEST, "Incorrect content type. Should be " + content_type)
+            return
+        try:
+            request_data = self.rfile.read(int(self.headers['Content-Length']))
+            # Gotta parse this thing like 3 times -____-
+            parsed = urllib.parse.unquote(request_data.decode('utf-8'))
+            broken_request = urllib.parse.parse_qs(parsed)
+            log_request = {key: value[0] for key, value in broken_request.items()}
+            # And clean it up
+            log_request['args'] = ast.literal_eval(log_request['args'])
+            for key, value in log_request.items():
+                if isinstance(value, str):
+                    if value.isdigit():
+                        log_request[key] = int(value)
+                    elif value.replace('.', '', 1).isdigit():
+                        log_request[key] = float(value)
+                    else:
+                        pass
+                if value == 'None':
+                    log_request[key] = ''
+            log.callHandlers(logging.makeLogRecord(log_request))
+            self.send_response(HTTPStatus.OK, "OK")
+            self.send_header("Content-Length", str(len("OK")))
+            self.end_headers()
+        except Exception as e:
+            self.send_error(HTTPStatus.BAD_REQUEST, str(e))
+
+    def do_Log(self):
+        request_data = self.rfile.read(int(self.headers['Content-Length']))
+        self.log_request(code=HTTPStatus.OK, body=simplejson.dumps(simplejson.loads(request_data),
+                                                               sort_keys=True, indent=4 * ' '))
+        self.send_response(HTTPStatus.ACCEPTED, "Accepted")
+        self.end_headers()
+
     def do_POST(self):
 
         if "Content-Type" not in self.headers:
             self.send_error(HTTPStatus.BAD_REQUEST, "No Content-Type HEADER")
-
         content_type = self.headers.get("Content-Type")
 
-        match content_type:
-            case "application/json":
-                if _request:
-                    self.log_request(code=HTTPStatus.OK,
-                                     body=simplejson.dumps(str(self.request), sort_keys=True, indent=4 * ' '))
-                self.do_Json_Post()
-                pass
+        if _logserver:
+            self.do_LogServe(content_type)
+            return
 
-            case "application/x-www-form-urlencoded":
-                if _logserver:
+        else:
+
+            match self.path:
+                case "/command":
+                    if content_type != "application/json":
+                        self.send_error(HTTPStatus.BAD_REQUEST, "Incorrect content type. Should be " + content_type)
+                        return
+                    self.do_command()
+                    return
+                case None:
+                    self.do_Log()
+                    return
+                case "/log":
+                    self.do_Log()
+                    return
+                case "/mock":
+                    self.path ='/'
+                    request_data = self.rfile.read(int(self.headers['Content-Length']))
+                    self.log_request(code=HTTPStatus.OK, body=simplejson.dumps(simplejson.loads(request_data),
+                                                                               sort_keys=True, indent=4 * ' '))
+                    f = self.do_Common(default_filenames=["response.json"])
                     try:
-                        request_data = self.rfile.read(int(self.headers['Content-Length']))
-                        # Gotta parse this thing like 3 times -____-
-                        parsed = urllib.parse.unquote(request_data.decode('utf-8'))
-                        broken_request = urllib.parse.parse_qs(parsed)
-                        log_request = {key: value[0] for key, value in broken_request.items()}
-                        # And clean it up
-                        log_request['args'] = ast.literal_eval(log_request['args'])
-                        for key, value in log_request.items():
-                            if isinstance(value, str):
-                                if value.isdigit(): log_request[key] = int(value)
-                                elif value.replace('.', '', 1).isdigit(): log_request[key] = float(value)
-                                else: pass
-                            if value == 'None':
-                                log_request[key] = ''
-                        log.callHandlers(logging.makeLogRecord(log_request))
-                        self.send_response(HTTPStatus.OK, "OK")
-                        self.send_header("Content-Length", str(len("OK")))
+                        if _response:
+                            message = '\n------- RESPONSE -------'
+                            if _header: message += "\nHEADER:\n" + ''.join(item.decode() for item in self._headers_buffer)
+                            if _body: message += "\nBODY: \n" + f[1]
+                            log.info(message)
                         self.end_headers()
-                    except Exception as e:
-                        self.send_error(HTTPStatus.BAD_REQUEST, str(e))
-                pass
+                        self.copyfile(f[0], self.wfile)
+                    finally:
+                        f[0].close()
 
-    def do_Common(self):
+    def do_Common(self, default_filenames):
         path = self.translate_path(self.path)
         f = None
         log.debug(f"PATH: {path}")
@@ -129,15 +169,22 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
             log.debug("PATH points to directory instead of file, looking for index files")
             parts = urllib.parse.urlsplit(self.path)
             if not parts.path.endswith('/'):
-                return self.moved(parts)
-            for index in "index.html", "index.htm":
-                index = os.path.join(path, index)
-                if os.path.isfile(index):
+                self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+                new_parts = (parts[0], parts[1], parts[2] + '/', parts[3], parts[4])
+                new_url = urllib.parse.urlunsplit(new_parts)
+                self.send_header('Server', self.version_string())
+                self.send_header('Date', self.date_time_string())
+                self.send_header("Location", new_url)
+                self.send_header("Content-Length", "0")
+                if _response and _header: log.info("\nHEADERS:\n" + self.headers_as_string())
+                self.end_headers()
+            for index in default_filenames:
+                if os.path.isfile(os.path.join(path, index)):
                     path = index
                     break
             else:
                 log.debug("No index found, serving directory list")
-                return self.list_directory(path)
+                return [self.list_directory(path), "List for: " + path]
         ctype = self.guess_type(path)
         if path.endswith("/"):
             log.warning("File " + path + " not found")
@@ -190,18 +237,6 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
             f.close()
             raise
 
-    def moved(self, parts):
-        self.send_response(HTTPStatus.MOVED_PERMANENTLY)
-        new_parts = (parts[0], parts[1], parts[2] + '/', parts[3], parts[4])
-        new_url = urllib.parse.urlunsplit(new_parts)
-        self.send_header('Server', self.version_string())
-        self.send_header('Date', self.date_time_string())
-        self.send_header("Location", new_url)
-        self.send_header("Content-Length", "0")
-        if _response and _header: log.info("\nHEADERS:\n" + self.headers_as_string())
-        self.end_headers()
-        return None
-
     def send_response(self, code, message=None):
         self.send_response_only(code, message)
         self.send_header('Server', self.version_string())
@@ -213,7 +248,7 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
             output += h.decode('utf-8')
         return output
 
-    def do_Json_Post(self):
+    def do_command(self):
         request_data = self.rfile.read(int(self.headers['Content-Length']))
         self.log_request(code=HTTPStatus.OK,
                          body=simplejson.dumps(simplejson.loads(request_data), sort_keys=True, indent=4 * ' '))
@@ -258,6 +293,55 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
                 log.debug("Received log order.")
             case None:
                 log.debug("Received unknown type")
+
+    def list_directory(self, path):
+        try:
+            list = os.listdir(path)
+        except OSError:
+            self.send_error(
+                HTTPStatus.NOT_FOUND,
+                "No permission to list directory")
+            return None
+        list.sort(key=lambda a: a.lower())
+        r = []
+        try:
+            displaypath = urllib.parse.unquote(self.path,
+                                               errors='surrogatepass')
+        except UnicodeDecodeError:
+            displaypath = urllib.parse.unquote(self.path)
+        displaypath = html.escape(displaypath, quote=False)
+        enc = sys.getfilesystemencoding()
+        title = f'Directory listing for {displaypath}'
+        r.append('<!DOCTYPE HTML>')
+        r.append('<html lang="en">')
+        r.append('<head>')
+        r.append(f'<meta charset="{enc}">')
+        r.append(f'<title>{title}</title>\n</head>')
+        r.append(f'<body>\n<h1>{title}</h1>')
+        r.append('<hr>\n<ul>')
+        for name in list:
+            fullname = os.path.join(path, name)
+            displayname = linkname = name
+            # Append / for directories or @ for symbolic links
+            if os.path.isdir(fullname):
+                displayname = name + "/"
+                linkname = name + "/"
+            if os.path.islink(fullname):
+                displayname = name + "@"
+                # Note: a link to a directory displays with @ and links with /
+            r.append('<li><a href="%s">%s</a></li>'
+                    % (urllib.parse.quote(linkname,
+                                          errors='surrogatepass'),
+                       html.escape(displayname, quote=False)))
+        r.append('</ul>\n<hr>\n</body>\n</html>\n')
+        encoded = '\n'.join(r).encode(enc, 'surrogateescape')
+        f = io.BytesIO()
+        f.write(encoded)
+        f.seek(0)
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-type", "text/html; charset=%s" % enc)
+        self.send_header("Content-Length", str(len(encoded)))
+        return f
 
 
 def run_command(command: str) -> dict[str, str]:
@@ -410,12 +494,13 @@ def run(server_class=HTTPServer, handler_class=TardigradeRequestHandler, config=
     # Initialize http server
     server_address = ('localhost', int(config.port))
     httpd = server_class(server_address, handler_class)
+
     if "no-console" not in c.options:
         print(f'{Colors.pink}' + TARDIGRADE_ASCII + f'{Colors.reset}')
         print(f'Tardigrade Server is running. Listening at: ' + httpd.server_name + ":" + str(c.port))
 
     if "no-console" not in c.options:
-        print('GET requests serving files from: ' + config.directory)
+        print('GET requests serving files from: ' + (config.directory if config.directory != '' else 'same folder.'))
         print(("Full color " if _color else "No color ") + "logging enabled. Level: " +
               logging.getLevelName(log.getEffectiveLevel()))
     try:
@@ -439,7 +524,7 @@ if __name__ == '__main__':
     _color = "no-color" not in c.options
     _console = "no-console" not in c.options
     _logserver = c.logserver
-
+    _directory_serve = os.path.join(os.getcwd() + c.directory)
     log = initialize_logger(c)
 
     run(config=c)

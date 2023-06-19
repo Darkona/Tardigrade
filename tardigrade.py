@@ -5,11 +5,8 @@ import html
 import io
 import logging
 import os
-import signal
 import socketserver
 import subprocess
-import sys
-import threading
 import time
 import urllib.parse
 from datetime import datetime
@@ -17,19 +14,21 @@ from datetime import timezone
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 from logging.handlers import RotatingFileHandler
-from typing import Any
 
-import psutil
 import simplejson
 
+from commandthread import CommandThread
+from legs import ColorFormatter, Colors, HEADERS, MimeTypes
+
 # Tardigrade ASCII art from> https://twitter.com/tardigradopedia/status/1289077195793674246 - modified by me
+AUTHOR = "Javier.Darkona@Gmail.com"
+
 TARDIGRADE_ASCII = " (꒰֎꒱) \n උ( ___ )づ\n උ( ___ )づ \n  උ( ___ )づ\n උ( ___ )づ"'\n'
-VERSION = "Tardigrade 1.0 - Javier Darkona (2023)"
+VERSION = "Tardigrade-1.0"
 
 # Globals so I can pass stuff from one class to another, because python is weird and I don't fully understand it
 
 # Server
-_file = None
 _directory_serve = ''
 _timeout = 0
 # Logging
@@ -39,225 +38,287 @@ _header = True
 _body = True
 
 # Console
-_color = True
-_console = True
+
 log = None
-
-
-class CommandThread(threading.Thread):
-
-    def __init__(self, cwd, timeout):
-        super().__init__()
-        self.process = None
-        self.stdout = None
-        self.stderr = None
-        self.timeout = timeout
-        self.cwd = cwd
-
-    def run(self):
-        self.process = subprocess.Popen(self.cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                        shell=True, encoding='utf-8', text=True)
-
-    def join(self, timeout: float | None = ...) -> None:
-        try:
-            self.stdout, self.stderr = self.process.communicate(timeout=self.timeout)
-        except subprocess.TimeoutExpired as e:
-            for _ in psutil.Process(self.process.pid).children(recursive=True): c.kill()
-            self.stdout, self.stderr = self.process.stdout.read(), self.process.stderr.read()
-        finally:
-            super().join()
-
-    def result(self):
-        return self.stdout, self.stderr
+ENC = 'utf-8'
+th: CommandThread = None
 
 
 class TardigradeRequestHandler(SimpleHTTPRequestHandler):
-    th: CommandThread
 
     def __init__(self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer):
         self._headers_buffer = []
+        self.server_version = "TardigradeHTTP/" + VERSION
         super().__init__(request, client_address, server, directory=_directory_serve)
 
-    def log_request(self, code='-', size='-', body: str = None) -> None:
-        if isinstance(code, HTTPStatus):
-            code = code.value
-        if _request:
-            message = '\n------- REQUEST: ' + self.requestline
-            if _header: message += "\nHEADER:\n" + str(self.headers)
-            if _body and body: message += "BODY: \n" + body
-            log.info(message)
+    def prepare_error(self, code: HTTPStatus, message: str = None, explain: str = None):
+        try:
+            shortMsg, longMsg = self.responses[code]
+        except KeyError:
+            shortMsg, longMsg = '???', '???'
+        if message is None:
+            message = shortMsg
+        if explain is None:
+            explain = longMsg
+        self.send_response(code, message)
+        self.send_header(HEADERS.CONNECTION, HEADERS.CLOSE)
+        body = None
+        if (code >= 200 and
+                code not in (HTTPStatus.NO_CONTENT,
+                             HTTPStatus.RESET_CONTENT,
+                             HTTPStatus.NOT_MODIFIED)):
+            content = (self.error_message_format % {
+                'code': code,
+                'message': html.escape(message, quote=False),
+                'explain': html.escape(explain, quote=False)
+            })
+            body = content.encode(ENC, 'replace')
+            self.send_header(HEADERS.CONTENT_TYPE, self.error_content_type)
+            self.send_header(HEADERS.CONTENT_LENGTH, str(len(body)))
+            self.end_headers()
+        if self.command != 'HEAD' and body:
+            self.wfile.write(body)
+        return body
 
-    def log_error(self, f: str, *args: Any) -> None:
-        f = "%d %s"
-        log.error("Error: " + f % args)
+    def prepare_log_request(self, body):
+        message = '\n------- REQUEST: ' + self.requestline
+        if _header: message += "\nHEADER:\n" + str(self.headers)
+        if _body and body: message += "BODY:\n" + body
+        return message
+
+    def prepare_log_response(self, code: HTTPStatus = None, msg: str = None, body=None):
+        if isinstance(code, HTTPStatus): code = code.value
+        try:
+            shortMsg, longMsg = self.responses[code]
+        except KeyError:
+            shortMsg, longMsg = '???', '???'
+        if msg is None: msg = shortMsg
+        output = '\n------- RESPONSE: HTTP Status - ' + str(code) + "-" + msg
+        if _header: output += "\nHEADER:\n" + ''.join(item.decode() for item in self._headers_buffer)
+        if _body: output += "\nBODY: \n" + body if body else ''
+        return output
 
     def do_GET(self):
-        self.log_request()
-        f = self.do_Common(default_filenames=("index.html", "index.htm"))
-        if f:
+        if _request: log.info(self.prepare_log_request(None))
+        try:
+            f = self.do_Common(default_filenames=("index.html", "index.htm"))
             try:
-                if _response:
-                    message = '\n------- RESPONSE -------'
-                    if _header: message += "\nHEADER:\n" + ''.join(item.decode() for item in self._headers_buffer)
-                    if _body: message += "\nBODY: \n" + f[1]
-                    log.info(message)
-                self.end_headers()
-                self.copyfile(f[0], self.wfile)
-
+                if f:
+                    if _response: log.info(self.prepare_log_response(code=HTTPStatus.OK, body=f[1]))
+                    self.end_headers()
+                    self.copyfile(f[0], self.wfile)
+            except Exception as e:
+                raise e
             finally:
                 f[0].close()
+        except Exception as e:
+            msg = "Problem while serving GET request: " + str(e)
+            log.warning(msg)
+            body = self.prepare_error(code=HTTPStatus.INTERNAL_SERVER_ERROR, explain=msg)
+            if _response: log.info(self.prepare_log_response(body))
+            self.end_headers()
 
     def do_HEAD(self):
-        """Serve a HEAD request."""
-        f = self.do_Common(default_filenames=("index.html", "index.htm"))
-        if f:
-            if _response: log.info("\nRESPONSE HEADER:\n" + str(self.headers))
-            f[0].close()
+        if _request: log.info(self.prepare_log_request(None))
+        try:
+            f = self.do_Common(default_filenames=("index.html", "index.htm"))
+            try:
+                if f:
+                    if _response: log.info(self.prepare_log_response(body=f[1], code=HTTPStatus.OK))
+                    self.end_headers()
+            except Exception as e:
+                raise e
+            finally:
+                f[0].close()
+        except Exception as e:
+            msg = "Problem while serving HEAD request: " + str(e)
+            log.warning(msg)
+            body = self.prepare_error(HTTPStatus.INTERNAL_SERVER_ERROR, explain=msg)
+            if _response: log.info(self.prepare_log_response(body))
+            self.end_headers()
 
     def do_LogServe(self, content_type):
         if content_type != "application/x-www-form-urlencoded":
-            self.send_error(HTTPStatus.BAD_REQUEST,
-                            "Incorrect content type. Should be: application/x-www-form-urlencoded")
-            return
-        try:
-            request_data = self.rfile.read(int(self.headers['Content-Length']))
-            # Gotta parse this thing like 3 times -____-
-            parsed = urllib.parse.unquote(request_data.decode('utf-8'))
-            broken_request = urllib.parse.parse_qs(parsed)
-            log_request = {key: value[0] for key, value in broken_request.items()}
-            # And clean it up
-            log_request['args'] = ast.literal_eval(log_request['args'])
-            for key, value in log_request.items():
-                if isinstance(value, str):
-                    if value.isdigit():
-                        log_request[key] = int(value)
-                    elif value.replace('.', '', 1).isdigit():
-                        log_request[key] = float(value)
-                    else:
-                        pass
-                if value == 'None':
-                    log_request[key] = ''
-            log.callHandlers(logging.makeLogRecord(log_request))
-            self.send_response(HTTPStatus.OK, "OK")
-            self.send_header("Content-Length", str(len("OK")))
-            self.end_headers()
-        except Exception as e:
-            self.send_error(HTTPStatus.BAD_REQUEST, str(e))
-
-    def do_Log(self):
-        request_data = self.rfile.read(int(self.headers['Content-Length']))
-        self.log_request(code=HTTPStatus.OK, body=simplejson.dumps(simplejson.loads(request_data),
-                                                                   sort_keys=True, indent=4 * ' '))
-        self.send_response(HTTPStatus.ACCEPTED, "Accepted")
-        self.end_headers()
+            raise TypeError("Incorrect content type. Should be: application/x-www-form-urlencoded")
+        request_data = self.rfile.read(int(self.headers[HEADERS.CONTENT_LENGTH]))
+        # Gotta parse this thing like 3 times -____-
+        parsed = urllib.parse.unquote(request_data.decode('utf-8'))
+        broken_request = urllib.parse.parse_qs(parsed)
+        log_request = {key: value[0] for key, value in broken_request.items()}
+        # And clean it up
+        log_request['args'] = ast.literal_eval(log_request['args'])
+        for key, value in log_request.items():
+            if isinstance(value, str):
+                if value.isdigit():
+                    log_request[key] = int(value)
+                elif value.replace('.', '', 1).isdigit():
+                    log_request[key] = float(value)
+                else:
+                    pass
+            if value == 'None':
+                log_request[key] = ''
+        log.callHandlers(logging.makeLogRecord(log_request))
+        self.send_response(HTTPStatus.OK)
+        self.send_header(HEADERS.CONTENT_LENGTH, str(len("OK")))
+        if _response: log.info(self.prepare_log_response(HTTPStatus.OK))
 
     def do_POST(self):
+
+        log.debug("Received POST request")
+        response_body, status, explain = None, None, None
+
         try:
-            if "Content-Type" not in self.headers:
-                self.send_error(HTTPStatus.BAD_REQUEST, "No Content-Type HEADER")
-            content_type = self.headers.get("Content-Type")
+
+            if HEADERS.CONTENT_TYPE not in self.headers:
+                raise TypeError("No Content-Type HEADER")
+
+            content_type = self.headers.get(HEADERS.CONTENT_TYPE)
 
             if _logserver:
-                self.do_LogServe(content_type)
-                return
+
+                log.debug('Log server active')
+                return self.do_LogServe(content_type)
 
             else:
-                match self.path:
-                    case "/command":
-                        if content_type != "application/json":
-                            self.send_error(HTTPStatus.BAD_REQUEST,
-                                            "Incorrect content type. Should be: application/json")
-                        try:
-                            return self.do_command()
-                        except Exception as e:
-                            return self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
-                    case None:
-                        try:
-                            return self.do_Log()
-                        except Exception as e:
-                            return self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
-                    case "/log":
-                        try:
-                            return self.do_Log()
-                        except Exception as e:
-                            return self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
 
-                    case "/mock":
-                        self.path = '/'
-                        request_data = self.rfile.read(int(self.headers['Content-Length']))
-                        self.log_request(code=HTTPStatus.OK, body=simplejson.dumps(simplejson.loads(request_data),
-                                                                                   sort_keys=True, indent=4 * ' '))
-                        f = self.do_Common(default_filenames=["response.json"])
-                        try:
-                            if _response:
-                                message = '\n------- RESPONSE -------'
-                                if _header: message += "\nHEADER:\n" + ''.join(
-                                    item.decode() for item in self._headers_buffer)
-                                if _body: message += "\nBODY: \n" + f[1]
-                                log.info(message)
-                            self.end_headers()
-                            self.copyfile(f[0], self.wfile)
-                        finally:
-                            f[0].close()
+                log.debug('Normal server active')
+
+                request_data = self.rfile.read(int(self.headers[HEADERS.CONTENT_LENGTH]))
+
+                part = self.path.split('/')[1]
+                if part in ["command", "mock", "log", "stop"]:
+
+                    try:
+                        request_body = simplejson.dumps(simplejson.loads(request_data), sort_keys=True, indent=4 * ' ')
+                    except simplejson.JSONDecodeError:
+                        raise TypeError("Badly formatted JSON")
+
+                    if _request: log.info(self.prepare_log_request(request_body))
+
+                    match part:
+
+                        case "command":
+                            log.debug("Calling command endpoint")
+                            if content_type != MimeTypes.APPLICATION_JSON:
+                                raise TypeError("Incorrect content type. Should be: application/json")
+
+                            data = simplejson.loads(request_data)
+
+                            if "cmd" in data and "args" in data:
+                                cmd_response = self.run_command(command=data["cmd"], arg_list=data["args"])
+                            elif "single_line" in data and data["single_line"] != '':
+                                cmd_response = self.run_command(command=data["single_line"])
+                            else:
+                                raise TypeError("Either no 'single_line' or no 'cmd' and 'args' pair")
+
+                            response_body = simplejson.dumps(cmd_response[1], indent=4 * ' ')
+                            status = cmd_response[0]
+                            log.debug("Command endpoint exiting.")
+
+                        case "mock":
+                            log.debug("Calling mock endpoint")
+
+                            self.path = self.path.replace("/mock", "", 1)
+                            f = self.do_Common(default_filenames=["response.json"])
+
+                            try:
+                                if f:
+                                    response_body = f[1]
+                                    status = HTTPStatus.OK
+                                    self.end_headers()
+                                    self.copyfile(f[0], self.wfile)
+                            finally:
+                                f[0].close()
+
+                        case "log":
+                            log.debug("Calling mock endpoint")
+                            status = HTTPStatus.OK
+
+                        case "stop":
+                            log.debug("Calling mock endpoint")
+                            response_body, status = self.stop_command()
+
+                        case None:
+                            log.debug("Calling non-existent endpoint")
+                            status = HTTPStatus.NOT_FOUND
+                else:
+                    status = HTTPStatus.NOT_FOUND
         except Exception as e:
-            log.error("Something bad happened.", str(e))
-            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, "Something bad happened: " + str(e))
+            self.flush_headers()
+            msg = "Problem while serving POST request: " + str(e)
+            log.warning(msg)
+            status = HTTPStatus.BAD_REQUEST if isinstance(e, TypeError) else HTTPStatus.INTERNAL_SERVER_ERROR
+            explain = msg
 
-    def do_command(self):
-        request_data = self.rfile.read(int(self.headers['Content-Length']))
-        try:
-            jsonData = simplejson.loads(request_data)
-        except simplejson.JSONDecodeError:
-            return self.send_error(HTTPStatus.BAD_REQUEST)
-        self.log_request(code=HTTPStatus.OK, body=simplejson.dumps(jsonData, sort_keys=True, indent=4 * ' '))
-        log.debug("Received command order.")
+        finally:
 
-        if "cmd" in jsonData and "args" in jsonData:
-            response = self.run_command(command=jsonData["cmd"], arg_list=jsonData["args"])
-        elif "single_line" in jsonData and jsonData["single_line"] != '':
-            response = self.run_command(command=jsonData["single_line"])
-        else:
-            return self.send_error(HTTPStatus.BAD_REQUEST, "Either no 'single_line' or no 'cmd' and 'args' pair")
-
-        body = simplejson.dumps(response[1], indent=4 * ' ').encode('utf-8')
-
-        self.send_response(response[0])
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Content-Type", "application/json")
-        if _response:
-            message = "\n------- RESPONSE ------"
-            if _header: message += "\nHEADERS:\n" + self.headers_as_string()
-            if _body: message += f"\nBODY:\n{body.decode('utf-8')}\n"
-            log.info(message)
-        self.end_headers()
-        self.wfile.write(body)
+            self.send_response(status)
+            self.send_header(HEADERS.CONTENT_LENGTH, str(len(response_body)) if response_body else 0)
+            self.send_header(HEADERS.CONTENT_TYPE, MimeTypes.APPLICATION_JSON)
+            if _response: log.info(self.prepare_log_response(code=HTTPStatus.OK, body=response_body, msg=explain))
+            self.end_headers()
+            if response_body:
+                self.wfile.write(response_body.encode(ENC))
 
     def do_DELETE(self):
-        if self.th.isAlive():
-            if self.stop_command():
-                self.send_response(HTTPStatus.ACCEPTED, "Process stoppped")
+        if _request: log.info(self.prepare_log_request(None))
+        response_body, status = self.stop_command()
+        self.send_response(status)
+
+        self.send_header(HEADERS.CONTENT_TYPE, MimeTypes.APPLICATION_JSON)
+        self.send_header(HEADERS.CONTENT_LENGTH, str(len(response_body)) if response_body else 0)
+        if _response: log.info(
+            self.prepare_log_response(status, body=response_body.decode(ENC) if response_body else ''))
+        self.end_headers()
+        self.wfile.write(response_body)
+
+    def stop_command(self):
+        response_body = None
+        if th is not None and th.is_alive():
+            log.debug("Process exists, sending stop signal.")
+            th.join()
+            status = HTTPStatus.OK
+
+            if th.is_alive():
+                log.error("Process not stopping, I'm killing myself and all my children processes now.")
+                th.go_nuclear()
+                if th.is_alive():
+                    log.critical("Something is very wrong.")
+                    response_body = "Process still running".encode('utf-8')
+                    status = HTTPStatus.INTERNAL_SERVER_ERROR
             else:
-                self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR, "Process still running")
+                log.debug("Process stopped, sending response")
+                stdout, stderr = th.result()
+                response_body = simplejson.dumps({"error": stderr, "output": stdout}, indent=4 * ' ').encode('utf-8')
+
         else:
-            self.send_response(HTTPStatus.NOT_FOUND, "Process not running")
+            status = HTTPStatus.NOT_FOUND
+            response_body = "No process running".encode('utf-8')
+        return response_body, status
 
     def do_Common(self, default_filenames):
+
+        # path = urllib.parse.unquote(self.path)
         path = self.translate_path(self.path)
-        f = None
         log.debug(f"PATH: {path}")
+
         if os.path.isdir(path):
             log.debug("PATH points to directory instead of file, looking for index files")
             parts = urllib.parse.urlsplit(self.path)
+
             if not parts.path.endswith('/'):
                 self.send_response(HTTPStatus.MOVED_PERMANENTLY)
                 new_parts = (parts[0], parts[1], parts[2] + '/', parts[3], parts[4])
                 new_url = urllib.parse.urlunsplit(new_parts)
-                self.send_header('Server', self.version_string())
-                self.send_header('Date', self.date_time_string())
-                self.send_header("Location", new_url)
-                self.send_header("Content-Length", "0")
-                if _response and _header: log.info("\nHEADERS:\n" + self.headers_as_string())
+                self.send_header(HEADERS.SERVER, self.version_string())
+                self.send_header(HEADERS.DATE, self.date_time_string())
+                self.send_header(HEADERS.LOCATION, new_url)
+                self.send_header(HEADERS.CONTENT_LENGTH, "0")
+                self.prepare_log_response(HTTPStatus.MOVED_PERMANENTLY)
+
+                if _response: log.info(self.prepare_log_response())
                 self.end_headers()
+
             for index in default_filenames:
                 if os.path.isfile(os.path.join(path, index)):
                     path = index
@@ -265,92 +326,90 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
             else:
                 log.debug("No index found, serving directory list")
                 return [self.list_directory(path), "List for: " + path]
+
         ctype = self.guess_type(path)
+
         if path.endswith("/"):
-            log.warning("File " + path + " not found")
-            self.send_error(HTTPStatus.NOT_FOUND, "file not found")
+            msg = "File " + path + " not found"
+            log.warning(msg)
+            body = self.prepare_error(HTTPStatus.NOT_FOUND, explain=msg)
+            if _response: log.info(self.prepare_log_response(body))
             return None
+
         try:
             f = open(path, 'rb')
-        except OSError:
-            log.warning("File " + path + " not found")
-            self.send_error(HTTPStatus.NOT_FOUND, "File not found")
+        except OSError as e:
+            msg = "OS error: " + str(e)
+            log.warning(msg)
+            body = self.prepare_error(HTTPStatus.NOT_FOUND, explain=msg)
+            if _response: log.info(self.prepare_log_response(body))
             return None
+
         log.debug("File '" + path + "' found")
+
         try:
             fs = os.fstat(f.fileno())
-            # Use browser cache if possible
-            if "If-Modified-Since" in self.headers and "If-None-Match" not in self.headers:
-                # compare If-Modified-Since and time of last file modification
+            if HEADERS.IF_MODIFIED_SINCE in self.headers and HEADERS.IF_NONE_MATCH not in self.headers:
+
                 log.debug("If-Modified-Since header found in request, attempting to parse.")
+
                 try:
-                    ims = email.utils.parsedate_to_datetime(self.headers["If-Modified-Since"])
+                    ims = email.utils.parsedate_to_datetime(self.headers[HEADERS.IF_MODIFIED_SINCE])
                 except (TypeError, IndexError, OverflowError, ValueError):
                     log.debug("Error at parsing date from headers")
-                    pass
+
                 else:
                     if ims.tzinfo is None:
-                        # obsolete format with no timezone, cf.
-                        # https://tools.ietf.org/html/rfc7231#section-7.1.1.1
                         ims = ims.replace(tzinfo=timezone.utc)
+
                     if ims.tzinfo is timezone.utc:
                         log.debug("Comparing file timestamp to If-Modified-Since")
-                        # compare to UTC datetime of last modification
                         last_modif = datetime.fromtimestamp(fs.st_mtime, timezone.utc)
-                        # remove microseconds, like in If-Modified-Since
                         last_modif = last_modif.replace(microsecond=0)
 
                         if last_modif <= ims:
                             log.warning("Modified not matching, sending NOT_MODIFIED")
                             self.send_response(HTTPStatus.NOT_MODIFIED)
-                            self.end_headers()
                             f.close()
                             return None
+
             self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Length", str(fs[6]))
-            self.send_header("Content-Type", ctype)
-            self.send_header("Last-Modified", self.date_time_string(int(fs.st_mtime)))
+            self.send_header(HEADERS.CONTENT_TYPE, ctype)
+            self.send_header(HEADERS.CONTENT_LENGTH, str(fs[6]))
+            self.send_header(HEADERS.LAST_MODIFIED, self.date_time_string(int(fs.st_mtime)))
             return [f, path]
+
         except Exception as e:
-            log.warning("Error while fetching file: " + str(e))
-            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
             f.close()
-            raise
+            raise e
 
     def send_response(self, code, message=None):
         self.send_response_only(code, message)
-        self.send_header('Server', self.version_string())
-        self.send_header('Date', self.date_time_string())
-
-    def headers_as_string(self):
-        output = ''
-        for h in self._headers_buffer:
-            output += h.decode('utf-8')
-        return output
+        self.send_header(HEADERS.SERVER, self.version_string())
+        self.send_header(HEADERS.DATE, self.date_time_string())
 
     def list_directory(self, path):
         try:
-            list = os.listdir(path)
+            itemlist = os.listdir(path)
         except OSError:
             self.send_error(HTTPStatus.NOT_FOUND, "No permission to list directory")
             return None
-        list.sort(key=lambda a: a.lower())
+        itemlist.sort(key=lambda a: a.lower())
         r = []
         try:
             displaypath = urllib.parse.unquote(self.path, errors='surrogatepass')
         except UnicodeDecodeError:
             displaypath = urllib.parse.unquote(self.path)
         displaypath = html.escape(displaypath, quote=False)
-        enc = sys.getfilesystemencoding()
         title = f'Directory listing for {displaypath}'
         r.append('<!DOCTYPE HTML>')
         r.append('<html lang="en">')
         r.append('<head>')
-        r.append(f'<meta charset="{enc}">')
+        r.append(f'<meta charset="{ENC}">')
         r.append(f'<title>{title}</title>\n</head>')
         r.append(f'<body>\n<h1>{title}</h1>')
         r.append('<hr>\n<ul>')
-        for name in list:
+        for name in itemlist:
             fullname = os.path.join(path, name)
             displayname = linkname = name
             # Append / for directories or @ for symbolic links
@@ -361,89 +420,69 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
                 displayname = name + "@"
                 # Note: a link to a directory displays with @ and links with /
             r.append('<li><a href="%s">%s</a></li>'
-                     % (urllib.parse.quote(linkname,
-                                           errors='surrogatepass'),
+                     % (urllib.parse.quote(linkname, errors='surrogatepass'),
                         html.escape(displayname, quote=False)))
         r.append('</ul>\n<hr>\n</body>\n</html>\n')
-        encoded = '\n'.join(r).encode(enc, 'surrogateescape')
+        encoded = '\n'.join(r).encode(ENC, 'surrogateescape')
         f = io.BytesIO()
         f.write(encoded)
         f.seek(0)
         self.send_response(HTTPStatus.OK)
-        self.send_header("Content-type", "text/html; charset=%s" % enc)
-        self.send_header("Content-Length", str(len(encoded)))
+        self.send_header(HEADERS.CONTENT_TYPE, MimeTypes.TEXT_HTML + ";charset=%s" % ENC)
+        self.send_header(HEADERS.CONTENT_LENGTH, str(len(encoded)))
         return f
 
-    def stop_command(self):
-        if self.th is not None and self.th.is_alive():
-            self.th.join()
-        return not self.th.isAlive()
+    def send_header(self, keyword, value):
+        """Send a MIME header to the headers buffer."""
+        if self.request_version != 'HTTP/0.9':
+            if not hasattr(self, '_headers_buffer'):
+                self._headers_buffer = []
+            val = ("%s: %s\r\n" % (keyword, value))
+            if not any(header.decode('latin-1', 'strict').startswith(val.split(":")[0]) for header in
+                       self._headers_buffer):
+                self._headers_buffer.append(val.encode('latin-1', 'strict'))
+
+        if keyword.lower() == 'connection':
+            if value.lower() == 'close':
+                self.close_connection = True
+            elif value.lower() == 'keep-alive':
+                self.close_connection = False
 
     def run_command(self, command: str = '', arg_list: (str, []) = ()) -> [HTTPStatus, dict[str, str]]:
         cwd = [command]
+        global th
         if arg_list: cwd.extend(arg_list)
         log.debug("Received command: " + " ".join(cwd) + "\nexecuting...\n")
-        if not hasattr(self, "th") or not self.th.isAlive():
-            self.th = CommandThread(cwd=cwd, timeout=_timeout)
+        if th is None or not th.is_alive():
+            th = CommandThread(cwd=cwd, timeout=_timeout)
             try:
-                self.th.start()
-                time.sleep(0.02)
-                self.th.join()
-                stdout, stderr = self.th.result()
+                log.debug("Created thread, starting")
+                th.start()
+                if _timeout <= 0:
+                    return [HTTPStatus.OK, {"error": None, "output": "Process " + cwd[0] + " is running."}]
+                time.sleep(0.1)
+                th.join()
+                log.debug("Thread finished, obtaining results")
+                stdout, stderr = th.result()
                 return [HTTPStatus.OK, {"error": stderr, "output": stdout}]
             except subprocess.TimeoutExpired:
-                stdout, stderr = self.th.result()
+                stdout, stderr = th.result()
                 return [HTTPStatus.REQUEST_TIMEOUT, {"error": stderr, "output": stdout}]
+            finally:
+                if _timeout > 0: th = None
         else:
             return [HTTPStatus.LOCKED, {'error': 'Another process already running'}]
 
 
-class Colors:
-    pink = "\033[38;5;206m"
-    grey = "\033[1;30m"
-    green = "\033[0;32m"
-    yellow = "\033[1;33m"
-    red = "\033[31;1;m"
-    purple = "\033[0;35m"
-    blue = "\033[10;34m"
-    light_blue = "\033[1;36m"
-    reset = "\033[0m"
-    blink_red = "\033[31;1;4m"
-
-
-class ColorFormatter(logging.Formatter):
-
-    def __init__(self, f):
-        super(ColorFormatter, self).__init__()
-        self.fstring = f
-        self.FORMATS = self.define_format()
-        super().__init__()
-
-    def define_format(self):
-        format_prefix = f"{Colors.light_blue}Tardigrade ( ꒰֎꒱ ) - {Colors.purple}%(asctime)s{Colors.reset}"
-        format_prefix.encode('utf-8')
-        level = f" [%(levelname)s] "
-        return {
-            logging.DEBUG: format_prefix + Colors.green + level + Colors.reset + self.fstring,
-            logging.INFO: format_prefix + Colors.blue + level + ' ' + Colors.reset + self.fstring,
-            logging.WARNING: format_prefix + Colors.yellow + level + Colors.reset + self.fstring,
-            logging.ERROR: format_prefix + Colors.red + level + self.fstring + Colors.reset,
-            logging.CRITICAL: format_prefix + Colors.blink_red + level + self.fstring + Colors.reset
-        }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
-
-
-def initialize_logger(config):
+def initialize_logger(c: argparse.Namespace):
     # Get log level from single letter
     letter_to_word_map = {"I": "INFO", "D": "DEBUG", "W": "WARN", "E": "ERROR", "C": "CRITICAL", "Q": "QUIET"}
-    log_level = config.loglevel.upper()
+    log_level = c.loglevel.upper()
     log_level = letter_to_word_map[log_level] if log_level in letter_to_word_map else log_level
     console_fmt = 'Line:%(lineno)d : [%(funcName)s] %(message)s'
-    file_fmt = "Tardigrade ( ꒰֎꒱ ) - %(asctime)s  [%(levelname)s] Line:%(lineno)d : [%(funcName)s] %(message)s"
+    file_fmt = "Tardigrade " + (
+        "" if "no-banner" in c.options else "( ꒰֎꒱ )") + \
+               "- %(asctime)s  [%(levelname)s] Line:%(lineno)d : [%(funcName)s] %(message)s"
     if log_level != "QUIET":
 
         logger = logging.getLogger("root")
@@ -451,61 +490,64 @@ def initialize_logger(config):
 
         # Configure handlers
         handlers = []
-        if "file" in config.extra:
-            handlers.append(logging.handlers.RotatingFileHandler(config.filename, encoding='utf-8',
-                                                                 maxBytes=config.maxbytes, backupCount=config.count))
-        if "web" in config.extra:
-            handlers.append(logging.handlers.HTTPHandler(config.host, config.url, method=config.method,
-                                                         secure=config.secure, credentials=config.credentials))
+        if "file" in c.extra:
+            handlers.append(logging.handlers.RotatingFileHandler(c.filename, encoding='utf-8',
+                                                                 maxBytes=c.maxbytes, backupCount=c.count))
+            c.file_enable = True
+
+        if "web" in c.extra:
+            handlers.append(logging.handlers.HTTPHandler(c.host, c.url, method=c.method,
+                                                         secure=c.secure, credentials=c.credentials))
+            c.web_enable = True
         # Set same formatter for all the file handlers
         for h in handlers:
             h.setFormatter(ColorFormatter(console_fmt))
             # h.setFormatter(logging.Formatter(file_fmt))
 
-        if _console:
+        if "no-console" not in c.options:
             con = logging.StreamHandler()
             # Select color or plain formatter for console logger
-            con.setFormatter(ColorFormatter(console_fmt) if _color else logging.Formatter(file_fmt))
+            con.setFormatter(
+                ColorFormatter(console_fmt) if "no-color" not in c.options else logging.Formatter(file_fmt))
             handlers.append(con)
 
         for h in handlers:
             logger.addHandler(h)
-
-        if "fileLog" in config: print("Logging in file: " + config["filename"])
-        if "rotatingLog" in config: print("Logging in rotating file: " + config["filename"])
-        if "webLog" in config: print("Logging in web at: " + config["host"] + "/" + config["url"])
-        return logger
+        return logger, c
 
 
 def run(server_class=HTTPServer, handler_class=TardigradeRequestHandler, config=None):
     # Initialize http server
     server_address = ('localhost', int(config.port))
+    console = "no-console" not in c.options
+    color = "no-color" not in c.options
+    banner = "no-banner" not in c.options
+
     httpd = server_class(server_address, handler_class)
 
-    if "no-console" not in c.options:
-        if _color:
-            print(f'{Colors.pink}' + TARDIGRADE_ASCII + f'{Colors.reset}')
-        else:
-            print(TARDIGRADE_ASCII)
+    if console:
+        if banner:
+            if color: print(f'{Colors.pink}{TARDIGRADE_ASCII}{Colors.reset}')
+            else: print(TARDIGRADE_ASCII)
         print('Tardigrade Server is running. Listening at: ' + httpd.server_name + ":" + str(c.port))
-
-    if "no-console" not in c.options:
         print('GET requests serving files from: ' + (config.directory if config.directory != '' else 'same folder.'))
-        print(("Full color " if _color else "No color ") + "logging enabled. Level: " +
+        print(("Full color " if color else "Monochromatic (boring) ") + "logging enabled. Level: " +
               logging.getLevelName(log.getEffectiveLevel()))
+        if hasattr(config, "file_enabled"): print("Logging in file: " + config["filename"])
+        if hasattr(config, "file_web"): print("Logging in web at: " + config["host"] + "/" + config["url"])
     try:
         log.info("Tardigrade started")
         httpd.serve_forever()
     except KeyboardInterrupt:
+        log.info('Tardigrade stopped...\n')
         pass
     httpd.server_close()
-    log.info('Tardigrade stopped...\n')
 
 
 def get_args():
     checker = argparse.ArgumentParser(add_help=False)
-    checker.add_argument("--extra", "-e", action="append", dest="extra", choices=["file", "web"],
-                         help="extra logger outputs")
+    checker.add_argument("--extra", "-e", action="append", dest="extra",
+                         choices=["file", "web"], help="extra logger outputs")
     extra_args = checker.parse_known_args()[0]
     extra_args.extra = set(extra_args.extra) if extra_args.extra else []
 
@@ -514,10 +556,10 @@ def get_args():
     # Server Configuration Arguments
     server_group = parser.add_argument_group("Server Configuration")
 
-    server_group.add_argument("--port", type=int, default=8000, dest="port",
+    server_group.add_argument("--port", "-p", type=int, default=8000, dest="port",
                               help="the server port where Tardigrade will run")
 
-    server_group.add_argument("--directory", type=str, default='/', dest="directory",
+    server_group.add_argument("--directory", "-d", type=str, default='/', dest="directory",
                               help="directory to serve files or execute commands from")
 
     server_group.add_argument("--timeout", "-t", type=int, default=5, dest="timeout",
@@ -535,8 +577,10 @@ def get_args():
                                     "q", "d", "i", "w", "e", "c", "s"])
 
     log_group.add_argument("--options", "-o", nargs='*', dest="options",
-                           choices=["no-color", "no-request", "no-response", "no-header", "no-body", "no-console"],
+                           choices=["no-color", "no-request", "no-response", "no-header", "no-body", "no-console",
+                                    "no-banner"],
                            help="remove certain attributes from logging.")
+
     log_group.add_argument("--extra", "-e", action="append", dest="extra", choices=["file", "web"],
                            help="extra logger outputs")
     # Extra Logger Configuration
@@ -570,11 +614,9 @@ if __name__ == '__main__':
     _body = "no-body" not in c.options and not c.logserver
     _request = "no-request" not in c.options and not c.logserver
     _response = "no-response" not in c.options and not c.logserver
-    _color = "no-color" not in c.options
-    _console = "no-console" not in c.options
     _logserver = c.logserver
     _directory_serve = os.path.join(os.getcwd() + c.directory)
     _timeout = c.timeout
-    log = initialize_logger(c)
+    log, config = initialize_logger(c)
 
-    run(config=c)
+    run(config=config)

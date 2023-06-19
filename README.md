@@ -42,6 +42,41 @@ Will simply log the request as it comes, one log record per request.
 
 Executes a command in the os terminal, and returns the output from the command. Useful for example to generate a some data or run a custom .bat or .sh via a command line utility to use in subsequent operations in Postman.
 
+Request
+```json lines
+{
+    "single_line" : "string", 
+    "cmd": "string",
+    "args": ["string",...]
+}
+```
+Where 
+ - single_line is a command with arguments included, as the name implies, in a single line.
+ - cmd is a string containing just the command
+ - args is an array of strings containing every argument separately
 
+If all properties are present, the pair of cmd & args is prioritized.
 
+Example 1: Run dir /b in windows to see a list of elements in tardigrade's directory
+```json lines
+{
+  "single_line" : "dir /b"
+}
 
+```
+
+Example 2:
+```json lines
+{
+    "cmd": "dir",
+    "args": ["C:", "/b"]
+}
+```
+
+Example 3:
+```json lines
+{
+    "cmd": "dir",
+    "args": ["/a", "/b"]
+}
+```

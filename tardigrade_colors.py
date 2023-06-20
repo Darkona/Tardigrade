@@ -2,19 +2,67 @@ import logging
 
 
 class Colors:
+    black = "\033[1;30m"
+    dark_blue = "\033[1;34m"
+    dark_green = "\033[1;32m"
+    dark_aqua = "\033[1;36m"
+    dark_red = "\033[1;31m"
+    dark_purple = "\033[1;35m"
+    gold = "\033[1;33m"
+    gray = "\033[1;37m"
+    dark_gray = "\033[1;90m"
+    blue = "\033[1;94m"
+    green = "\033[1;92m"
+    aqua = "\033[1;96m"
+    red = "\033[1;91m"
+    light_purple = "\033[1;95m"
+    yellow = "\033[1;93m"
+    white = "\033[1;97m"
+    orange = "\033[38;5;208m",
     pink = "\033[38;5;206m"
-    grey = "\033[1;30m"
-    green = "\033[0;32m"
-    yellow = "\033[1;33m"
-    red = "\033[31;1;m"
-    purple = "\033[0;35m"
-    blue = "\033[10;34m"
-    light_blue = "\033[1;36m"
     reset = "\033[0m"
-    blink_red = "\033[31;1;4m"
+    purple = "\033[0;35m"
 
 
 class ColorFormatter(logging.Formatter):
+    mappings = {
+        'title': "Tardigrade",
+        'black': "\033[1;30m",
+        'dark_blue': "\033[1;34m",
+        'dark_green': "\033[1;32m",
+        'dark_aqua': "\033[1;36m",
+        'dark_red': "\033[1;31m",
+        'dark_purple': "\033[1;35m",
+        'gold': "\033[1;33m",
+        'gray': "\033[1;37m",
+        'dark_gray': "\033[1;90m",
+        'blue': "\033[1;94m",
+        'green': "\033[1;92m",
+        'aqua': "\033[1;96m",
+        'red': "\033[1;91m",
+        'purple'
+        'orange': "\033[38;5;208m",
+        'light_purple': "\033[1;95m",
+        'yellow': "\033[1;93m",
+        'white': "\033[1;97m",
+        'reset': "\033[0m",
+        'banner': "( ꒰֎꒱ )",
+        'pink': "\033[38;5;206m",
+        'purple': "\033[0;35m"
+    }
+
+    def colorFormat(self, string):
+        result = []
+        for part in string.split('%('):
+            if ')' in part:
+                key, value = part.split(')', 1)
+                if key in self.mappings:
+                    result.append(self.mappings[key])
+                else:
+                    result.append('%(' + key + ')' + value)
+            else:
+                result.append(part)
+        return ''.join(result)
 
     def __init__(self, f):
         super(ColorFormatter, self).__init__()
@@ -23,20 +71,18 @@ class ColorFormatter(logging.Formatter):
         super().__init__()
 
     def define_format(self):
-        format_prefix = f"{Colors.light_blue}Tardigrade ( ꒰֎꒱ ) - {Colors.purple}%(asctime)s{Colors.reset}"
-        format_prefix.encode('utf-8')
-        level = f" [%(levelname)s] "
         return {
-            logging.DEBUG: format_prefix + Colors.green + level + Colors.reset + self.fstring,
-            logging.INFO: format_prefix + Colors.blue + level + ' ' + Colors.reset + self.fstring,
-            logging.WARNING: format_prefix + Colors.yellow + level + Colors.reset + self.fstring,
-            logging.ERROR: format_prefix + Colors.red + level + self.fstring + Colors.reset,
-            logging.CRITICAL: format_prefix + Colors.blink_red + level + self.fstring + Colors.reset
+            logging.DEBUG: "%(aqua)s%(title)s %(pink)s%(banner)s%(reset)s - %(purple)s%(asctime)s %(dark_green)s[%(levelname)s]%(gold)s %(funcName)s%(reset)s Line:%(lineno)d : %(message)s",
+            logging.INFO: "%(aqua)s%(title)s %(pink)s%(banner)s%(reset)s - %(purple)s%(asctime)s %(dark_blue)s[%(levelname)s]%(gold)s %(funcName)s%(reset)s Line:%(lineno)d : %(message)s",
+            logging.WARNING: "%(aqua)s%(title)s %(pink)s%(banner)s%(reset)s - %(purple)s%(asctime)s %(orange)s[%(levelname)s]%(gold)s %(funcName)s%(reset)s Line:%(lineno)d : %(message)s",
+            logging.ERROR: "%(aqua)s%(title)s %(pink)s%(banner)s%(reset)s - %(purple)s%(asctime)s %(red)s[%(levelname)s]%(gold)s %(funcName)s%(reset)s Line:%(lineno)d : %(message)s",
+            logging.CRITICAL: "%(aqua)s%(title)s %(pink)s%(banner)s%(reset)s - %(purple)s%(asctime)s %(dark_red)s[%(levelname)s]%(gold)s %(funcName)s%(reset)s Line:%(lineno)d : %(message)s"
         }
 
     def format(self, record):
         try:
             log_fmt = self.FORMATS.get(record.levelno)
+            log_fmt = self.colorFormat(log_fmt)
             formatter = logging.Formatter(log_fmt)
             return formatter.format(record)
         except TypeError as e:

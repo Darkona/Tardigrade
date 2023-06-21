@@ -22,7 +22,7 @@ packages=find_packages(','),
 version='1.0',
 
 # List a license for the project, eg. MIT License
-license='',
+license='MIT License',
 
 # Short description of your library:
 description='Small footprint SimpleHTTPServer implementation with nice logging and POST requests processing, meant for development work and simple testing',
@@ -47,7 +47,7 @@ download_url='https://github.com/Darkona/Tardigrade/releases',
 keywords=["http", "postman", "files", "devtool"],
 
 # List project dependencies:
-install_requires=["simplejson", "psutil", "setuptools"],
+install_requires=["simplejson", "psutil", "setuptools", "PyYAML"],
 
 # https://pypi.org/classifiers/
 classifiers=["Development Status :: 4 - Beta"]

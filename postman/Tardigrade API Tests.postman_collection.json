@@ -1,0 +1,523 @@
+{
+	"info": {
+		"_postman_id": "21e5beb4-7357-4108-9e85-1986fb5b15d5",
+		"name": "Tardigrade API Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "2007290"
+	},
+	"item": [
+		{
+			"name": "POST Requests",
+			"item": [
+				{
+					"name": "Command",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let template = `\r",
+									"    <html>\r",
+									"        <head>\r",
+									"            <style>\r",
+									"                textarea {\r",
+									"                    width: 100%;\r",
+									"                    height: 480px;\r",
+									"                    background-color: black;\r",
+									"                    font-family: monospace;\r",
+									"                } \r",
+									"                .text {\r",
+									"                    color: green;\r",
+									"                    font-weight: bold;\r",
+									"                }\r",
+									"            </style>\r",
+									"        </head>\r",
+									"        <body>\r",
+									"            <textarea class=\"text\">{{#if output}}{{output}}{{/if}}\r",
+									"{{#if error}}Error: {{error}}{{/if}}\r",
+									"            </textarea>\r",
+									"        </body>\r",
+									"    </html>\r",
+									"`\r",
+									"pm.visualizer.set(template, pm.response.json())\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{  \r\n\t\"cmd\": \"py\",  \r\n\t\"args\": [\"tardigrade.py\", \"-o\", \"no-color\", \"no-banner\", \"--timeout\", \"20\", \"--port\", \"8010\"]  \r\n}  ",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}:{{port}}/command",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"command"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Write",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let template = `\r",
+									"    <html>\r",
+									"        <head>\r",
+									"            <style>\r",
+									"                textarea {\r",
+									"                    width: 100%;\r",
+									"                    height: 480px;\r",
+									"                    background-color: black;\r",
+									"                    font-family: monospace;\r",
+									"                } \r",
+									"                .text {\r",
+									"                    color: green;\r",
+									"                    font-weight: bold;\r",
+									"                }\r",
+									"            </style>\r",
+									"        </head>\r",
+									"        <body>\r",
+									"            <textarea class=\"text\">{{#if output}}{{output}}{{/if}}\r",
+									"{{#if error}}Error: {{error}}{{/if}}\r",
+									"            </textarea>\r",
+									"        </body>\r",
+									"    </html>\r",
+									"`\r",
+									"pm.visualizer.set(template, pm.response.json())\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"filename\": \"Tardigrade.txt\",\r\n    \"content\": \"Tardigrades (/ˈtɑːrdɪˌɡreɪdz/), known colloquially as water bears or moss piglets, are a phylum of eight-legged segmented micro-animals. \\nThey were first described by the German zoologist Johann August Ephraim Goeze in 1773, who called them Kleiner Wasserbär (\\\"little water bear\\\"). \\nIn 1777, the Italian biologist Lazzaro Spallanzani named them Tardigrada (/tɑːrˈdɪɡrədə/), which means \\\"slow steppers\\\".\",\r\n    \"mode\": \"append\",\r\n    \"type\": \"text\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}:{{port}}/write",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"write"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Mock",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"cmd\": \"py\",\r\n    \"args\": [\"tardigrade.py\", \"-o\", \"no-color\", \"--timeout\", \"20\"]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}:{{port}}/mock",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"mock"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Log",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"menu\": {\r\n  \"id\": \"file\",\r\n  \"value\": \"File\",\r\n  \"popup\": {\r\n    \"menuitem\": [\r\n      {\"value\": \"New\", \"onclick\": \"CreateNewDoc()\"},\r\n      {\"value\": \"Open\", \"onclick\": \"OpenDoc()\"},\r\n      {\"value\": \"Close\", \"onclick\": \"CloseDoc()\"}\r\n    ]\r\n  }\r\n}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}:{{port}}/log",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"log"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Stop",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}:{{port}}/stop",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"stop"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "GET Requests",
+			"item": [
+				{
+					"name": "Parse TXT from file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let host = pm.collectionVariables.get(\"host\")\r",
+									"let port = pm.collectionVariables.get(\"port\")\r",
+									"\r",
+									"let orig = pm.response\r",
+									"const req = {\r",
+									"    url: `http://${host}:${port}/text.txt`,\r",
+									"    method: 'GET',\r",
+									"    header: {\r",
+									"        'Content-Length' : 0,\r",
+									"    }\r",
+									"}\r",
+									"\r",
+									"let template = `\r",
+									"    <html>\r",
+									"        <head>\r",
+									"            <style>\r",
+									"                textarea {\r",
+									"                    width: 640px;\r",
+									"                    height: 480px;\r",
+									"                    font-family: monospace;\r",
+									"                } \r",
+									"                .text {\r",
+									"                    color: blue;\r",
+									"                    font-weight: bold;\r",
+									"                }\r",
+									"            </style>\r",
+									"        </head>\r",
+									"        <body>\r",
+									"            <textarea class=\"text\" editable=\"false\">{{text}}</textarea>\r",
+									"        </body>\r",
+									"    </html>\r",
+									"`\r",
+									"pm.sendRequest(req, (error, response) => {\r",
+									"        \r",
+									"       \r",
+									"        const data = response.toJSON() \r",
+									"        const buffer = Buffer.from(data.stream)\r",
+									"        const text = buffer.toString()\r",
+									"        console.log(\"DATA FROM FILE: \" + text)\r",
+									"\r",
+									"        textResponse = pm.response\r",
+									"        console.log(textResponse)\r",
+									"        let visualizationData = {\r",
+									"            \"text\" : text\r",
+									"        }\r",
+									"\r",
+									"        pm.visualizer.set(template, visualizationData)\r",
+									"    \r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}:{{port}}/../",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"..",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Parse CSV from file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let host = pm.collectionVariables.get(\"host\")\r",
+									"let port = pm.collectionVariables.get(\"port\")\r",
+									"\r",
+									"const req = {\r",
+									"    url: `http://${host}:${port}/commas.csv`,\r",
+									"    method: 'GET',\r",
+									"    header: {\r",
+									"        'Content-Length' : 0,\r",
+									"    }\r",
+									"}\r",
+									"\r",
+									"let template = `\r",
+									"    <html>\r",
+									"        <head>\r",
+									"            <style>\r",
+									"                textarea {\r",
+									"                    width: 100%;\r",
+									"                    height: 480px;\r",
+									"                    font-family: monospace;\r",
+									"                } \r",
+									"                .text {\r",
+									"                    color: blue;\r",
+									"                    font-weight: bold;\r",
+									"                }\r",
+									"                th {\r",
+									"                    background-color:lightgrey;\r",
+									"                }\r",
+									"            </style>\r",
+									"        </head>\r",
+									"        <table>\r",
+									"            <thead>\r",
+									"            {{#each values}}\r",
+									"            <tr>   \r",
+									"                {{#unless @index}}\r",
+									"                    {{#each this}}\r",
+									"                        <th>{{this}}</th>\r",
+									"                    {{/each}}\r",
+									"                {{/unless}}\r",
+									"            </tr>\r",
+									"            {{/each}}\r",
+									"            </thead>\r",
+									"            <tbody>\r",
+									"            {{#each values}}\r",
+									"            <tr>  \r",
+									"                {{#if @index}}\r",
+									"                    {{#each this}}\r",
+									"                        <td>{{this}}</td>\r",
+									"                    {{/each}}\r",
+									"                {{/if}}\r",
+									"            </thead>\r",
+									"            </tr>\r",
+									"            {{/each}}\r",
+									"            </tbody>\r",
+									"            \r",
+									"        </table>\r",
+									"    </html>\r",
+									"`\r",
+									"pm.sendRequest(req, (error, response) => {\r",
+									"\r",
+									"        const data = response.toJSON() \r",
+									"        const streamData = data.stream\r",
+									"        const buffer = Buffer.from(streamData)\r",
+									"        const parse = require('csv-parse/lib/sync')\r",
+									"\r",
+									"        const records = parse(buffer, {\r",
+									"            skip_empty_lines: true\r",
+									"        });\r",
+									"        console.log(records)\r",
+									"   \r",
+									"        let visualizationData = {\r",
+									"            \"values\" : records\r",
+									"        }\r",
+									"\r",
+									"        pm.visualizer.set(template, visualizationData)\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}:{{port}}",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}"
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Stop Command",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let template = `\r",
+							"    <html>\r",
+							"        <head>\r",
+							"            <style>\r",
+							"                textarea {\r",
+							"                    width: 100%;\r",
+							"                    height: 480px;\r",
+							"                    background-color: black;\r",
+							"                    font-family: monospace;\r",
+							"                } \r",
+							"                .text {\r",
+							"                    color: green;\r",
+							"                    font-weight: bold;\r",
+							"                }\r",
+							"            </style>\r",
+							"        </head>\r",
+							"        <body>\r",
+							"            <textarea class=\"text\">{{#if output}}{{output}}{{/if}}\r",
+							"{{#if error}}Error: {{error}}{{/if}}\r",
+							"            </textarea>\r",
+							"        </body>\r",
+							"    </html>\r",
+							"`\r",
+							"\r",
+							"pm.visualizer.set(template, pm.response.json())\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{host}}:{{port}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{port}}"
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "host",
+			"value": "localhost",
+			"type": "string"
+		},
+		{
+			"key": "port",
+			"value": "8000",
+			"type": "string"
+		}
+	]
+}

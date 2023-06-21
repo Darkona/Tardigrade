@@ -28,7 +28,7 @@ license='',
 description='Small footprint SimpleHTTPServer implementation with nice logging and POST requests processing, meant for development work and simple testing',
 
 # Long description of your library:
-long_description='see README.md',
+long_description='',
 long_description_content_type='text/markdown',
 
 # Your name:

@@ -16,6 +16,15 @@ Devised principally to be an auxiliary application to Postman, until some day in
 
 Tardigrade can connect to another Tardigrade instance via web logging to log the other's events, or any application using python's **[HHTPHandler](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.HTTPHandler)**  
 
+## Install & Run
+
+```bash
+python -m pip install git+https://github.com/Darkona/Tardigrade.git
+```
+```bash
+python -m tardigrade
+```
+
 ## Features  
   
 ### HTTP Server Mode  
@@ -292,12 +301,12 @@ Filesize is in bytes.
 ## Usage
 First, install Tardigrade and its required dependencies with:
 ```bash
-python -m pip install tardigrade.py
+python -m pip install tardigrade
 ```
 
 To run Tardigrade from the command line, the command is:
 ```bash
-python tardigrade.py
+python tardigrade
 ```
 This is a Tardigrade running with all its default options.
 
@@ -310,7 +319,7 @@ command line arguments > config.yaml > defaults
 ```
 Running Tardigrade with the -h argument will show the following information:
 ```bash
-py tardigrade.py -h
+py tardigrade -h
 ```
 ```
 usage: Tardigrade [-h] [--port PORT] [--directory DIRECTORY] [--timeout TIMEOUT] [--output OUTPUT] [--input INPUT]
@@ -396,41 +405,41 @@ You can use a second Tardigrade in Log Server Mode (--logserver) to listen to th
 
 Long form arguments
 ```
-python tardigrade.py --loglevel quiet
+python tardigrade --loglevel quiet
 ```
 Short form arguments
 ```
-python tardigrade.py -lq
+python tardigrade -lq
 ```
 ##### Show nothing on the console, log everything to a rotating file called "newlogs" in a directory called "grawn" and rotate the file every 5MB, keeping a maximun of 10 files. Only log WARNING or above. 
 
 Long form arguments
 ```
-python tardigrade.py -options no-console -extra file --filename newlogs.log --maxbytes 5000000 --count 10 --output /grawn --loglevel warn
+python tardigrade -options no-console -extra file --filename newlogs.log --maxbytes 5000000 --count 10 --output /grawn --loglevel warn
 ```
 Short form arguments
 ```
-python tardigrade.py -ono-console -efile -fnewlogs.log -x5000000 -c10 -O/grawn -lw
+python tardigrade -ono-console -efile -fnewlogs.log -x5000000 -c10 -O/grawn -lw
 ```
 
 ##### Start as log server and send all events to a different log server listening for POST requests at someserver.com:5000/logger, which requires basic auth
 Long form arguments
 ```
-python tardigrade.py --logserver --extra web --webhost http://someserver.com:5000 --weburl / --method POST --credentials myusername mypassword
+python tardigrade --logserver --extra web --webhost http://someserver.com:5000 --weburl / --method POST --credentials myusername mypassword
 ```
 Short form arguments
 ```
-python tardigrade.py -L -eweb --webhost http://someserver.com:5000 --weburl /logger -mPOST -C mysuername mypassword
+python tardigrade -L -eweb --webhost http://someserver.com:5000 --weburl /logger -mPOST -C mysuername mypassword
 ```
 
 ##### Start with monochromatic console logging at level ERROR or above only, listen at port 80, and enable indefinite execution of commands
 Long form arguments
 ```
-python tardigrade.py --port 80 --options no-color --loglevel error --timeout 0
+python tardigrade --port 80 --options no-color --loglevel error --timeout 0
 ```
 Short form arguments
 ```
-python tardigrade.py -p80 -o no-color -le -t0
+python tardigrade -p80 -o no-color -le -t0
 ```
 
 ### Extra Arguments
@@ -443,3 +452,22 @@ These arguments are inherited from HTTPServer
 The main drive for this project was to make a companion server for Postman to help in making development life easier. Postman won't let you load files (yet, and possibly never) and the use case for this and for running a command line program and get the output exist for a while now.
 
 Included in the project is a Postman collection with a few examples like loading a text file, loading a csv, parsing the info and showing it cleanly in the Postman visualizer, etc, but more complex uses both in the pre-request and test sections can be done by anyone who needs it.
+
+
+## Build Instructions
+
+Install Poetry
+```bash
+python -m pip install poetry
+```
+Install modules with poetry
+
+```bash
+poetry install
+```
+Build with poetry
+
+ ```bash
+poetry build
+```
+   

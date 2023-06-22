@@ -24,6 +24,7 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 from logging.handlers import RotatingFileHandler
 from typing import Any
 
+import importlib_metadata
 import psutil
 import simplejson
 import yaml
@@ -33,9 +34,9 @@ AUTHOR = "Javier.Darkona@Gmail.com"
 
 TARDIGRADE_ASCII = " (꒰֎꒱) \n උ( ___ )づ\n උ( ___ )づ \n  උ( ___ )づ\n උ( ___ )づ"'\n'
 FULL_COLOR = "\033[1;91mF\033[38;5;208mu\033[1;93ml\033[1;92ml \033[1;96mc\033[0;34mo\033[0;35ml\033[1;95mo\033[38;5;206mr\033[0m "
-with open(os.path.join('VERSION')) as version_file:
-    version = version_file.read().strip()
-__VERSION__ = version or "0.1.2"
+
+metadata = importlib_metadata.metadata("tardigrade")
+__VERSION__ = metadata.json["version"]
 
 
 class HEADERS:

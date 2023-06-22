@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tardigrade"
-version = "0.1.1"
+version = "0.1.3"
 description = "Small footprint SimpleHTTPServer implementation with nice logging and POST requests processing, meant for development work and simple testing"
 authors = ["Javier Darkona <javier.darkona@gmail.com>"]
 license = "MIT"
@@ -10,6 +10,7 @@ repository = "https://github.com/Darkona/Tardigrade"
 keywords = ["postman", "http", "logging", "devtool"]
 include = [
     { path = "LICENSE", format = ["sdist", "wheel"] },
+    { path = "src/VERSION", format = ["sdist", "wheel"] },
     { path = "output/*.*", format = ["sdist", "wheel"] },
     { path = "input/commas.csv", format = "sdist" },
     { path = "input/index.html", format = "sdist" },
@@ -24,6 +25,8 @@ python = "^3.11"
 simplejson = "^3.19.1"
 psutil = "^5.9.5"
 PyYAML = "^6.0"
+tomli = "^2.0.1"
+importlib-metadata = "^6.7.0"
 
 [tool.poetry.scripts]
 my-script = "tardigrade:main"

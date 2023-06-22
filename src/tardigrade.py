@@ -33,7 +33,9 @@ AUTHOR = "Javier.Darkona@Gmail.com"
 
 TARDIGRADE_ASCII = " (꒰֎꒱) \n උ( ___ )づ\n උ( ___ )づ \n  උ( ___ )づ\n උ( ___ )づ"'\n'
 FULL_COLOR = "\033[1;91mF\033[38;5;208mu\033[1;93ml\033[1;92ml \033[1;96mc\033[0;34mo\033[0;35ml\033[1;95mo\033[38;5;206mr\033[0m "
-VERSION = "Tardigrade-1.0"
+with open(os.path.join('VERSION')) as version_file:
+    version = version_file.read().strip()
+__VERSION__ = version or "0.1.2"
 
 
 class HEADERS:
@@ -305,7 +307,7 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
 
     def __init__(self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer, cfg: TardigradeConfiguration):
         self._headers_buffer = []
-        self.server_version = "TardigradeHTTP/" + VERSION
+        self.server_version = "TardigradeHTTP/" + __VERSION__
         self.extensions_map.update(cfg.mimeTypes.__dict__.items())
         self.cfg = config
         super().__init__(request, client_address, server)
@@ -854,7 +856,7 @@ def print_initialization(httpd):
             else:
                 print(TARDIGRADE_ASCII)
 
-        print(f"Tardigrade Server is running. Listening at: {httpd.server_name}:{str(cfg.port)}")
+        print(f"Tardigrade Server version {__VERSION__} is running. Listening at: {httpd.server_name}:{str(cfg.port)}")
         print(f"Writting files to {cfg.output}, reading files from {cfg.input}")
         print((FULL_COLOR if cfg.color else "Monochromatic (boring) ") + "logging enabled. Level: " + logging.getLevelName(log.getEffectiveLevel()))
         if cfg.configFile:
@@ -940,7 +942,7 @@ def get_args(c: TardigradeConfiguration):
                              help="only has an effect if web logger is enabled; enables basic authentication with Authorization header")
 
     # Other Arguments
-    parser.add_argument("--version", action="version", help="show Tardigrade version", version=VERSION)
+    parser.add_argument("--version", action="version", help="show Tardigrade version", version=__VERSION__)
     parser.epilog = ""
 
     return parser.parse_args()
@@ -958,4 +960,10 @@ if __name__ == '__main__':
         pass
     finally:
         cfg.update(**get_args(cfg).__dict__)
+    try:
+        for s in [cfg.output, cfg.input]:
+            p = os.path.join(os.getcwd(), s)
+            if not os.path.exists(p): os.makedirs(p)
+    except OSError:
+        pass
     run()

@@ -10,45 +10,26 @@ try:
         long_description = f.read()
 except Exception:
     long_description = ''
+with open(os.path.join("src", 'VERSION')) as version_file:
+    version = version_file.read().strip()
 setup(
 
-# Project name:
-name='Tardigrade',
-
-# Packages to include in the distribution:
-packages=find_packages(','),
-
-# Project version number:
-version='1.0',
-
-# List a license for the project, eg. MIT License
-license='MIT License',
-
-# Short description of your library:
-description='Small footprint SimpleHTTPServer implementation with nice logging and POST requests processing, meant for development work and simple testing',
-
-# Long description of your library:
-long_description='',
-long_description_content_type='text/markdown',
-
-# Your name:
-author='Javier Darkona',
-
-# Your email address:
-author_email='Javier.Darkona@Gmail.com',
-
-# Link to your github repository or website:
-url='https://github.com/Darkona/Tardigrade',
-
-# Download Link from where the project can be downloaded from:
-download_url='https://github.com/Darkona/Tardigrade/releases',
-
-# List of keywords:
-keywords=["http", "postman", "files", "devtool"],
-
-# List project dependencies:
-install_requires=["simplejson", "psutil", "setuptools", "PyYAML"],
-
-# https://pypi.org/classifiers/
-classifiers=["Development Status :: 4 - Beta"]
+    name='tardigrade',
+    packages=find_packages('tardigrade'),
+    package_data={'tardigrade': ['README.md', 'input/*.*', 'config/config.yaml', 'postman/*.*']},
+    version=version,
+    license='MIT License',
+    description='Small footprint SimpleHTTPServer implementation with nice logging and POST requests processing, meant for development work and simple testing',
+    long_description='',
+    long_description_content_type='text/markdown',
+    author='Javier Darkona',
+    author_email='Javier.Darkona@Gmail.com',
+    url='https://github.com/Darkona/Tardigrade',
+    download_url='https://github.com/Darkona/Tardigrade/releases',
+    keywords=["http", "postman", "files", "devtool"],
+    python_requires='>=3.11',
+    install_requires=["simplejson", "psutil", "setuptools", "PyYAML"],
+    classifiers=["Programming Language :: Python :: 3",
+                 "License :: OSI Approved :: MIT License",
+                 "Operating System :: Windows"]
 )

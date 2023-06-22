@@ -3,7 +3,8 @@
 extra: []
 port: 8000
 directory: /
-output: /output
+input: input
+output: output
 timeout: 10
 logserver: false
 loglevel: info

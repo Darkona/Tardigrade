@@ -61,7 +61,7 @@ curl -XGET 'http://localhost:8000'
 </html>
 ```   
 ##### Example call 2:  
-```http request  
+```bash
 curl -XGET 'localhost:8000/other.html'  
 ```  
 ##### Response:  

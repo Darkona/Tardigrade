@@ -30,7 +30,7 @@ importlib-metadata = "^6.7.0"
 
 
 [tool.poetry.scripts]
-tardigrade = "tardigrade.tardigrade:main"
+tardigrade = "tardigrade.__main__:run"
 
 
 [build-system]

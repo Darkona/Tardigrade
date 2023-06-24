@@ -4,12 +4,12 @@ import argparse
 class TardigradeConfiguration(argparse.Namespace):
     # Configuration with all defaults, override by configuration file or running arguments
     version = ""
-    configFile = False
+    config_file = False
     extra: list = []
     port = 8000
     directory = '/'
-    input = '/input'
-    output = '/output'
+    input = 'input'
+    output = 'output'
     timeout = 10
     log_server = False
     loglevel = 'info'

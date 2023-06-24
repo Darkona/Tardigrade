@@ -83,27 +83,28 @@ curl -XGET 'localhost:8000/other.html'
 ```bash 
 curl -XGET 'localhost:8000/../'  
 ```  
-##### Response:  
+##### Response:
+
 ```html
 <!DOCTYPE HTML>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<title>Directory listing for /input//../</title>
-	</head>
-	<body>
-		<h1>Directory listing for /input//../</h1>
-		<hr>
-		<ul>
-			<li><a href="config/">config/</a></li>
-			<li><a href="input/">input/</a></li>
-			<li><a href="output/">output/</a></li>
-			<li><a href="README.md">README.md</a></li>
-			<li><a href="tardigrade.py">tardigrade.py</a></li>
-			<li><a href="venv/">venv/</a></li>
-		</ul>
-		<hr>
-	</body>
+<head>
+   <meta charset="utf-8">
+   <title>Directory listing for /input//../</title>
+</head>
+<body>
+<h1>Directory listing for /input//../</h1>
+<hr>
+<ul>
+   <li><a href="config/">config/</a></li>
+   <li><a href="input/">input/</a></li>
+   <li><a href="output/">output/</a></li>
+   <li><a href="README.md">README.md</a></li>
+   <li><a href="tardigrade.py">tardigrade.py</a></li>
+   <li><a href="venv/">venv/</a></li>
+</ul>
+<hr>
+</body>
 </html>
 ```
 ----

@@ -14,12 +14,11 @@ from logging.handlers import RotatingFileHandler
 import importlib_metadata
 import yaml
 
-# Tardigrade ASCII art from> https://twitter.com/tardigradopedia/status/1289077195793674246 - modified by me
-from tardigrade_configuration import TardigradeConfiguration
-from tardigrade_constants import TARDIGRADE_ASCII, FULL_COLOR
-from tardigrade_formatting import TardigradeColorFormatter
-from tardigrade_handling import TardigradeRequestHandler
-from tardigrade_threading import TardigradeCommandReturningThread
+from tardigrade.configuration import TardigradeConfiguration
+from tardigrade.constants import TARDIGRADE_ASCII, FULL_COLOR
+from tardigrade.formatting import TardigradeColorFormatter
+from tardigrade.handling import TardigradeRequestHandler
+from tardigrade.commandthread import TardigradeCommandReturningThread
 
 AUTHOR = "Javier.Darkona@Gmail.com"
 

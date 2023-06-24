@@ -8,14 +8,17 @@ readme = "README.md"
 homepage = "https://github.com/Darkona/Tardigrade"
 repository = "https://github.com/Darkona/Tardigrade"
 keywords = ["postman", "http", "logging", "devtool"]
+packages = [
+    {include = "tardigrade"}
+]
 include = [
     { path = "LICENSE", format = ["sdist", "wheel"] },
-    { path = "src/VERSION", format = ["sdist", "wheel"] },
     { path = "output/*.*", format = ["sdist", "wheel"] },
     { path = "input/*.*", format = ["sdist", "wheel"]},
     { path = "postman/*.*", format = "sdist" },
     { path = "config/config.yaml", format = ["sdist", "wheel"] }
 ]
+
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -25,8 +28,10 @@ PyYAML = "^6.0"
 tomli = "^2.0.1"
 importlib-metadata = "^6.7.0"
 
+
 [tool.poetry.scripts]
-my-script = "tardigrade:main"
+tardigrade = "tardigrade.tardigrade:main"
+
 
 [build-system]
 requires = ["poetry-core"]

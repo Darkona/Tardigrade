@@ -1,5 +1,4 @@
 import ast
-import email
 import html
 import io
 import logging
@@ -17,9 +16,9 @@ from email import utils
 
 import simplejson
 
-from tardigrade_configuration import TardigradeConfiguration
-from tardigrade_constants import HEADERS, APPLICATION_JSON, TEXT_HTML
-from tardigrade_threading import TardigradeCommandReturningThread
+from tardigrade.configuration import TardigradeConfiguration
+from tardigrade.constants import HEADERS, APPLICATION_JSON, TEXT_HTML
+from tardigrade.commandthread import TardigradeCommandReturningThread
 
 
 class TardigradeRequestHandler(SimpleHTTPRequestHandler):

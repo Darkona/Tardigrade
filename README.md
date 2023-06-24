@@ -21,7 +21,7 @@ Tardigrade can connect to another Tardigrade instance via web logging to log the
 ## Install & Run
 
 ```bash
-python -m pip install git+https://github.com/Darkona/Tardigrade.git
+python -m pip install git+https://github.com/Darkona/Tardigrade.git@0.1.3
 ```
 ```bash
 python -m tardigrade

@@ -264,7 +264,7 @@
 									"\r",
 									"let orig = pm.response\r",
 									"const req = {\r",
-									"    url: `http://${host}:${port}/text.txt`,\r",
+									"    url: `http://${host}:${port}/tardigrades.txt`,\r",
 									"    method: 'GET',\r",
 									"    header: {\r",
 									"        'Content-Length' : 0,\r",

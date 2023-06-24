@@ -441,7 +441,7 @@ class TardigradeRequestHandler(SimpleHTTPRequestHandler):
                 self.log.debug("If-Modified-Since header found in request, attempting to parse.")
 
                 try:
-                    ims = email.utils.parsedate_to_datetime(self.headers[HEADERS.IF_MODIFIED_SINCE])
+                    ims = utils.parsedate_to_datetime(self.headers[HEADERS.IF_MODIFIED_SINCE])
                 except (TypeError, IndexError, OverflowError, ValueError):
                     self.log.debug("Error at parsing date from headers")
 

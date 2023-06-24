@@ -11,7 +11,9 @@
 ## What is it  
 
 Tardigrade is a small python HTTP server that runs in the command line. It's meant to be a dev tool to quickly spin up a useful small server.  
-  
+
+Its most important features are file loader and logging utility.
+
 Devised principally to be an auxiliary application to Postman, until some day in the far future when **[7210](https://github.com/postmanlabs/postman-app-support/issues/7210)** is finally addressed.  
 
 Tardigrade can connect to another Tardigrade instance via web logging to log the other's events, or any application using python's **[HHTPHandler](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.HTTPHandler)**  
@@ -98,7 +100,6 @@ curl -XGET 'localhost:8000/../'
 			<li><a href="output/">output/</a></li>
 			<li><a href="README.md">README.md</a></li>
 			<li><a href="requirements.txt">requirements.txt</a></li>
-			<li><a href="setup.py">setup.py</a></li>
 			<li><a href="tardigrade.py">tardigrade.py</a></li>
 			<li><a href="venv/">venv/</a></li>
 		</ul>

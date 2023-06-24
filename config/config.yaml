@@ -6,14 +6,14 @@ directory: /
 input: input
 output: output
 timeout: 10
-logserver: false
+log_server: false
 loglevel: info
 options: []
 filename: output/logs/tardigrade.log
-maxBytes: 0
+max_bytes: 0
 count: 0
-webhost:
-weburl:
+web_host:
+web_url:
 method: POST
 secure: false
 # Set strings: ['username', 'password']
@@ -25,14 +25,14 @@ colors: {}
   # pink2: \033[38;0;206m
 
 #Can add more mime-types as well. These are used to guess the type of a file in the GET endpoint.
-mimeTypes:
+mime_types:
 - key: .eml
   value: message/rfc822
 
 # These are the formatting strings for all different levels of logging.
 # For all available mappings see https://docs.python.org/3/library/logging.html#logrecord-attributes
 # 'title' Will display "Tardigrade" and 'banner' will display the Tardigrade's face :(꒰֎꒱)
-logFormats:
+log_formats:
   # NOCOLOR IS USED FOR FILE LOGGING AND NON COLORED CONSOLE
   NOCOLOR: "%(title)s %(banner)s - [%(levelname)s] %(asctime)s {%(funcName)s:%(lineno)d} - %(message)s"
   # DEFAULT WILL BE USED IF A LEVEL HAS NO FORMAT SPECIFIED

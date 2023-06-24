@@ -99,7 +99,6 @@ curl -XGET 'localhost:8000/../'
 			<li><a href="input/">input/</a></li>
 			<li><a href="output/">output/</a></li>
 			<li><a href="README.md">README.md</a></li>
-			<li><a href="requirements.txt">requirements.txt</a></li>
 			<li><a href="tardigrade.py">tardigrade.py</a></li>
 			<li><a href="venv/">venv/</a></li>
 		</ul>

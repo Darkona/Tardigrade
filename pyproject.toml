@@ -12,10 +12,7 @@ include = [
     { path = "LICENSE", format = ["sdist", "wheel"] },
     { path = "src/VERSION", format = ["sdist", "wheel"] },
     { path = "output/*.*", format = ["sdist", "wheel"] },
-    { path = "input/commas.csv", format = "sdist" },
-    { path = "input/index.html", format = "sdist" },
-    { path = "input/response.json", format = "sdist" },
-    { path = "input/text.txt", format = "sdist" },
+    { path = "input/*.*", format = ["sdist", "wheel"]},
     { path = "postman/*.*", format = "sdist" },
     { path = "config/config.yaml", format = ["sdist", "wheel"] }
 ]

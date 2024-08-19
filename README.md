@@ -339,7 +339,7 @@ Server Configuration:
   --directory DIRECTORY, -d DIRECTORY
                         directory to execute commands from (default: /)
   --timeout TIMEOUT, -t TIMEOUT
-                        directory to serve files or execute commands from (default: 10)
+                        timeout to serve files or execute commands (default: 10)
   --output OUTPUT, -O OUTPUT
                         Directory where to write files to (default: /output)
   --input INPUT, -I INPUT

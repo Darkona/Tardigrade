@@ -1,0 +1,44 @@
+---
+#DEFAULTS - These values will be overriden by command line arguments
+extra: []
+port: 8000
+directory: /
+input: input
+output: output
+timeout: 10
+log_server: false
+loglevel: info
+options: []
+filename: output/logs/tardigrade.log
+max_bytes: 0
+count: 0
+web_host:
+web_url:
+method: POST
+secure: false
+# Set strings: ['username', 'password']
+credentials: !!python/tuple ['','']
+# Colors for colored console log messages.
+colors: {}
+  # Can add more ANSI colors, or arbitrary substitutions if that's your thing.
+  # If no-color is enabled, these won't print
+  # pink2: \033[38;0;206m
+
+#Can add more mime-types as well. These are used to guess the type of a file in the GET endpoint.
+mime_types:
+- key: .eml
+  value: message/rfc822
+
+# These are the formatting strings for all different levels of logging.
+# For all available mappings see https://docs.python.org/3/library/logging.html#logrecord-attributes
+# 'title' Will display "Tardigrade" and 'banner' will display the Tardigrade's face :(꒰֎꒱)
+log_formats:
+  # NOCOLOR IS USED FOR FILE LOGGING AND NON COLORED CONSOLE
+  NOCOLOR: "%(title)s %(banner)s - [%(levelname)s] %(asctime)s {%(funcName)s:%(lineno)d} - %(message)s"
+  # DEFAULT WILL BE USED IF A LEVEL HAS NO FORMAT SPECIFIED
+  DEFAULT:  '%(pink)s%(title)s %(banner)s%(reset)s - %(dark_blue)s[%(levelname)s] %(purple)s%(asctime)s%(reset)s {%(funcName)s} (%(lineno)s) - %(message)s'
+  DEBUG:    "%(pink)s%(title)s %(banner)s%(reset)s - %(dark_green)s[%(levelname)s] %(purple)s%(asctime)s %(dark_gray)s{%(funcName)s:%(lineno)s}%(blue)s %(message)s%(reset)s"
+  INFO:     '%(pink)s%(title)s %(banner)s%(reset)s - %(aqua)s[%(levelname)s] %(purple)s%(asctime)s %(dark_gray)s{%(funcName)s:%(lineno)s}%(reset)s %(message)s%(reset)s'
+  WARNING:  "%(pink)s%(title)s %(banner)s%(reset)s - %(orange)s[%(levelname)s] %(purple)s%(asctime)s %(dark_gray)s{%(funcName)s:%(lineno)s}%(yellow)s %(message)s%(reset)s"
+  ERROR:    "%(pink)s%(title)s %(banner)s%(reset)s - %(red)s[%(levelname)s] %(purple)s%(asctime)s %(dark_gray)s{%(funcName)s:%(lineno)s}%(red)s %(message)s%(reset)s"
+  CRITICAL: "%(pink)s%(title)s %(banner)s%(reset)s - %(dark_red)s[%(levelname)s] %(purple)s%(asctime)s %(dark_gray)s{%(funcName)s:%(lineno)s}%(red)s %(message)s%(reset)s"

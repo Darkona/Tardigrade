@@ -9,7 +9,6 @@ import logging
 import os
 import shutil
 import string
-import sys
 from functools import partial
 from http.server import HTTPServer
 from logging.handlers import RotatingFileHandler

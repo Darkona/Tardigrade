@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "tardigrade"
-version = "0.1.4"
+name = "tardigrade-http"
+version = "0.1.5"
 description = "Small footprint SimpleHTTPServer implementation with nice logging and POST requests processing, meant for development work and simple testing"
 authors = ["Javier Darkona <javier.darkona@gmail.com>"]
 license = "MIT"
@@ -23,10 +23,10 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.11"
 simplejson = "^3.19.1"
-psutil = "^5.9.5"
+psutil = "^6.0.0"
 PyYAML = "^6.0"
 tomli = "^2.0.1"
-importlib-metadata = "^6.7.0"
+importlib-metadata = "^8.2.0"
 
 
 [tool.poetry.scripts]
